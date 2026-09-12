@@ -9,13 +9,18 @@ import {
   IsIn,
   IsDateString,
   Matches,
+  IsOptional,
 } from 'class-validator';
 
 export class CreateLoanDto {
+  @IsOptional()
+  @IsIn(['stellar:testnet'])
+  settlementNetwork?: 'stellar:testnet';
   @IsUUID()
   borrowerId: string;
 
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Max(999999999.99)
   @IsPositive()
   capital: number;
 
@@ -27,7 +32,8 @@ export class CreateLoanDto {
   @Max(52)
   totalInstallments: number;
 
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Max(999999999.99)
   @IsPositive()
   installmentAmount: number;
 

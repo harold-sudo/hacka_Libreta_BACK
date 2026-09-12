@@ -1,4 +1,5 @@
-import { Injectable, Inject, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { JsonRpcProvider } from 'ethers';
 import type { ILoanRepository } from '../../../core/interfaces/loan-repository.interface';
 import type { IInstallmentRepository } from '../../../core/interfaces/installment-repository.interface';
 import type { IProfileRepository } from '../../../core/interfaces/profile-repository.interface';
@@ -24,11 +25,24 @@ export class LoansService {
   ) {}
 
   async createLoan(lenderId: string, dto: CreateLoanDto) {
+    const lenderProfile = await this.profileRepository.findByAuthUserId(lenderId);
+    if (!lenderProfile || lenderProfile.role!=='LENDER') throw new ForbiddenException('Se requiere un perfil de prestamista');
+    lenderId=lenderProfile.id;
+    if (dto.settlementNetwork) {
+      if (dto.currency!=='USDC') throw new BadRequestException('Las cuotas Pollar deben estar denominadas en USDC');
+      const provider=new JsonRpcProvider(process.env.HSK_RPC_URL);
+      try { if ((await provider.getNetwork()).chainId!==133n) throw new BadRequestException('Los préstamos de prueba requieren HSK testnet'); }
+      finally { provider.destroy(); }
+    }
     // 1. Validar que el prestatario existe
     const borrower = await this.profileRepository.findById(dto.borrowerId);
     if (!borrower) {
       throw new NotFoundException('Perfil de prestatario no encontrado');
     }
+    if (borrower.role!=='BORROWER' || borrower.id===lenderId || !borrower.wallet_address ||
+        borrower.wallet_address.toLowerCase()!==dto.borrowerWalletAddress.toLowerCase())
+      throw new BadRequestException('El prestatario y su wallet HSK deben coincidir con el perfil registrado');
+    if (dto.capital>dto.installmentAmount*dto.totalInstallments) throw new BadRequestException('Las cuotas no cubren el capital');
 
     const lender = await this.profileRepository.findById(lenderId);
     const lenderWallet =
@@ -61,6 +75,7 @@ export class LoansService {
       borrower_id: dto.borrowerId,
       capital: dto.capital,
       currency: dto.currency,
+      settlement_network: dto.settlementNetwork ?? null,
       total_installments: dto.totalInstallments,
       installment_amount: dto.installmentAmount,
       frequency: dto.frequency,

@@ -14,6 +14,8 @@ export interface Installment {
   status: InstallmentStatus;
   payment_method?: PaymentMethod | null;
   pollar_chain_id?: number | null;
+  pollar_network?: 'stellar:testnet' | null;
+  payment_rail?: 'CASH' | 'POLLAR' | null;
   pollar_tx_hash?: string | null;
   receipt_hash?: string | null;
   hsk_sync_status: HskSyncStatus;

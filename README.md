@@ -1,3 +1,5 @@
+> **Pollar testnet:** [Configuración desde cero y alcance de la integración](docs/POLLAR_SETUP.md). SDK y verificación disponibles; requiere crear la app Pollar. No concilia cuotas ni acredita mainnet.
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>

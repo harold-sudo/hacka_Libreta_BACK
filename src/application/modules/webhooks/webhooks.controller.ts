@@ -2,13 +2,13 @@ import {
   Controller,
   Post,
   Headers,
-  Body,
   HttpCode,
   HttpStatus,
   Req,
 } from '@nestjs/common';
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
 import { WebhooksService } from './webhooks.service';
-import { PollarWebhookDto } from './dto/pollar-webhook.dto';
 
 @Controller('api/webhooks')
 export class WebhooksController {
@@ -16,12 +16,11 @@ export class WebhooksController {
 
   @Post('pollar')
   @HttpCode(HttpStatus.OK)
-  async handlePollarWebhook(
+  handlePollarWebhook(
     @Headers('x-pollar-signature') signature: string,
-    @Body() dto: PollarWebhookDto,
-    @Req() req: any,
+    @Req() req: RawBodyRequest<Request>,
   ) {
-    const rawPayload = JSON.stringify(req.body);
-    return this.webhooksService.handlePollarWebhook(signature, rawPayload, dto);
+    const rawPayload = req.rawBody?.toString('utf8') || '';
+    return this.webhooksService.handlePollarWebhook(signature, rawPayload);
   }
 }

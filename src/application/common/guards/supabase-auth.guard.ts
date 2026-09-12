@@ -16,14 +16,6 @@ export class SupabaseAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers['authorization'];
-    const devUserId = request.headers['x-dev-user-id'];
-
-    // Modo desarrollo / Hackathon fallback
-    if (devUserId) {
-      request.user = { id: devUserId, email: 'dev@libreta.app' };
-      return true;
-    }
-
     if (!authHeader) {
       // Si no hay encabezado de autenticación, lanzamos Unauthorized
       throw new UnauthorizedException('Encabezado de autorización ausente');
@@ -32,15 +24,6 @@ export class SupabaseAuthGuard implements CanActivate {
     const [bearer, token] = authHeader.split(' ');
     if (bearer !== 'Bearer' || !token) {
       throw new UnauthorizedException('Formato de token inválido');
-    }
-
-    // Si es un token de prueba en desarrollo
-    if (token === 'dev_token' || token.startsWith('mock_')) {
-      request.user = {
-        id: '00000000-0000-0000-0000-000000000001',
-        email: 'mock@libreta.app',
-      };
-      return true;
     }
 
     try {

@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import type { IInstallmentRepository } from '../../../core/interfaces/installment-repository.interface';
 import type { ILoanRepository } from '../../../core/interfaces/loan-repository.interface';
@@ -99,6 +100,7 @@ export class InstallmentsService {
     });
 
     // Anclaje en HSK Chain
+    await this.installmentRepository.claimCash(installment.id);
     const blockchainRes = await this.blockchainService.confirmPayment({
       loanId: loan.hsk_loan_id,
       installmentNumber: installment.installment_number,
@@ -131,74 +133,10 @@ export class InstallmentsService {
     };
   }
 
-  async confirmPollarPayment(installmentId: string, dto: PollarConfirmDto) {
-    const installment =
-      await this.installmentRepository.findById(installmentId);
-    if (!installment) {
-      throw new NotFoundException('Cuota no encontrada');
-    }
-
-    // Idempotencia
-    if (
-      installment.status === 'PAID' &&
-      installment.pollar_tx_hash === dto.pollarTxHash
-    ) {
-      return {
-        alreadyProcessed: true,
-        installmentId: installment.id,
-        status: 'PAID',
-        paymentMethod: 'POLLAR_USDC',
-        receiptHash: installment.receipt_hash,
-      };
-    }
-
-    const loan = await this.loanRepository.findById(installment.loan_id);
-    if (!loan) {
-      throw new NotFoundException('Préstamo no encontrado');
-    }
-
-    const now = Date.now();
-    const receiptHash = this.cryptoEngine.computeReceiptHash({
-      loanId: loan.hsk_loan_id,
-      installmentNumber: installment.installment_number,
-      amount: Number(installment.amount),
-      otp: 'POLLAR_MAINNET',
-      timestamp: now,
-    });
-
-    // Anclaje en HSK Chain con enlace cruzado a Mainnet
-    const blockchainRes = await this.blockchainService.confirmPayment({
-      loanId: loan.hsk_loan_id,
-      installmentNumber: installment.installment_number,
-      receiptHash,
-      isDigital: true,
-      externalTxHash: dto.pollarTxHash,
-    });
-
-    const updated = await this.installmentRepository.updateInstallment(
-      installment.id,
-      {
-        status: 'PAID',
-        payment_method: 'POLLAR_USDC',
-        paid_date: new Date(now).toISOString(),
-        pollar_chain_id: dto.pollarChainId,
-        pollar_tx_hash: dto.pollarTxHash,
-        receipt_hash: receiptHash,
-        hsk_sync_status: 'SYNCED',
-      },
+  confirmPollarPayment(_installmentId: string, _dto: PollarConfirmDto) {
+    throw new ServiceUnavailableException(
+      'El endpoint EVM está deshabilitado. Usa /api/pollar/settlements para conciliar cuotas Stellar testnet mediante intenciones autenticadas.',
     );
-
-    await this.checkAndCompleteLoan(loan.id);
-
-    return {
-      installmentId: updated.id,
-      status: 'PAID',
-      paymentMethod: 'POLLAR_USDC',
-      pollarTxHash: dto.pollarTxHash,
-      receiptHash,
-      hskTxHash: blockchainRes.txHash,
-      confirmedAt: updated.paid_date,
-    };
   }
 
   private async checkAndCompleteLoan(loanId: string) {

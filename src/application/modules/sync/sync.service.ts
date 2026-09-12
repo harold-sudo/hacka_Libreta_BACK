@@ -125,6 +125,7 @@ export class SyncService {
     });
 
     // 4. Anclaje en HSK Chain
+    await this.installmentRepository.claimCash(installment.id);
     const blockchainRes = await this.blockchainService.confirmPayment({
       loanId: loan.hsk_loan_id,
       installmentNumber: payment.installmentNumber,

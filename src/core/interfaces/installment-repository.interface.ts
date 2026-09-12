@@ -1,6 +1,7 @@
 import { Installment } from '../domain/installment.entity';
 
 export interface IInstallmentRepository {
+  claimCash(id: string): Promise<void>;
   findById(id: string): Promise<Installment | null>;
   findByLoanId(loanId: string): Promise<Installment[]>;
   findByLoanIdAndNumber(

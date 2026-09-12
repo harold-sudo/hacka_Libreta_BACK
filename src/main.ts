@@ -6,7 +6,7 @@ import { HttpExceptionFilter } from './application/common/filters/http-exception
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // Habilitar CORS para integración con la PWA
   app.enableCors({

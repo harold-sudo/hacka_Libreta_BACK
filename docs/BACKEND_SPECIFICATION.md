@@ -1,3 +1,5 @@
+> **Estado Pollar — 2026-09-12:** integración de cuotas implementada para Stellar testnet y HSK 133: intenciones autenticadas, verificación del pago, conciliación SQL idempotente y anclaje HSK con recuperación. Migración aplicada y verificada en Supabase; falta validar una cuota real de testnet. La transferencia libre no liquida cuotas. Las referencias posteriores a Ethereum/Mainnet, webhooks de liquidación o widgets antiguos son diseño histórico. [Contrato vigente y activación paso a paso](POLLAR_INSTALLMENTS.md).
+
 # ESPECIFICACIÓN TÉCNICA DEL BACKEND & ARQUITECTURA POR CAPAS — LIBRETA
 
 **Proyecto:** LIBRETA — Microcrédito Verificable & Portabilidad de Reputación Financiera  

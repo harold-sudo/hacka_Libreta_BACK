@@ -8,6 +8,10 @@ export class SupabaseInstallmentRepository implements IInstallmentRepository {
   private readonly logger = new Logger(SupabaseInstallmentRepository.name);
 
   constructor(private readonly supabaseService: SupabaseService) {}
+  async claimCash(id: string): Promise<void> {
+    const { error } = await this.supabaseService.getAdminClient().rpc('libreta_claim_cash',{p_installment:id});
+    if (error) throw new Error('Cuota reservada para Pollar, pagada o migración pendiente');
+  }
 
   async findById(id: string): Promise<Installment | null> {
     const { data, error } = await this.supabaseService

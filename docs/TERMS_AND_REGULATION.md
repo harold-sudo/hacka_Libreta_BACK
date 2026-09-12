@@ -1,3 +1,5 @@
+> **Implementación técnica de pruebas:** la conciliación Pollar usa transferencias USDC entre wallets Stellar testnet y ancla únicamente hashes en HSK testnet. LIBRETA no recibe los fondos. Esta implementación no acredita por sí sola validez jurídica, cumplimiento normativo ni habilitación de mainnet. [Detalle vigente](POLLAR_INSTALLMENTS.md).
+
 # MARCO LEGAL, REGULATORIO Y TÉRMINOS DE SERVICIO — LIBRETA
 
 **Versión:** 1.0.0  

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
 import { IBlockchainService } from '../../core/interfaces/blockchain-service.interface';
@@ -44,12 +44,12 @@ export class HskBlockchainService implements IBlockchainService {
         );
       } else {
         this.logger.warn(
-          'HSK Blockchain Service running in Mock/Simulation Mode (Set HSK_OPERATOR_PRIVATE_KEY and LIBRETA_REGISTRY_ADDRESS to activate live on-chain anchoring).',
+          'HSK no configurado. Las escrituras quedan bloqueadas hasta configurar el operador y contrato.',
         );
       }
     } catch (err: any) {
       this.logger.warn(
-        `Failed to initialize live HSK provider: ${err.message}. Operating in resilient fallback mode.`,
+        `Failed to initialize live HSK provider: ${err.message}. Las escrituras quedan bloqueadas.`,
       );
     }
   }
@@ -78,21 +78,13 @@ export class HskBlockchainService implements IBlockchainService {
         };
       } catch (err: any) {
         this.logger.error(
-          `On-chain registerLoan error: ${err.message}. Generating cryptographic simulated receipt.`,
+          `On-chain registerLoan error: ${err.message}.`,
         );
+        throw new ServiceUnavailableException('HSK no confirmó la transacción; no se generó un comprobante simulado');
       }
     }
 
-    // Fallback determinístico para desarrollo / testing
-    const simulatedTxHash = ethers.keccak256(
-      ethers.toUtf8Bytes(
-        `hsk_reg:${params.loanId}:${params.borrowerWallet}:${Date.now()}`,
-      ),
-    );
-    this.logger.log(
-      `[SIMULATED HSK] Loan registered: ${params.loanId} -> TX: ${simulatedTxHash}`,
-    );
-    return { txHash: simulatedTxHash, blockNumber: 1337 };
+    throw new ServiceUnavailableException('Configura HSK antes de registrar préstamos');
   }
 
   async confirmPayment(params: {
@@ -126,21 +118,13 @@ export class HskBlockchainService implements IBlockchainService {
         };
       } catch (err: any) {
         this.logger.error(
-          `On-chain confirmPayment error: ${err.message}. Generating cryptographic simulated receipt.`,
+          `On-chain confirmPayment error: ${err.message}.`,
         );
+        throw new ServiceUnavailableException('HSK no confirmó la transacción; no se generó un comprobante simulado');
       }
     }
 
-    // Fallback determinístico para desarrollo / testing
-    const simulatedTxHash = ethers.keccak256(
-      ethers.toUtf8Bytes(
-        `hsk_pay:${params.loanId}:${params.installmentNumber}:${params.receiptHash}:${Date.now()}`,
-      ),
-    );
-    this.logger.log(
-      `[SIMULATED HSK] Payment confirmed: loan ${params.loanId} cuota #${params.installmentNumber} -> TX: ${simulatedTxHash}`,
-    );
-    return { txHash: simulatedTxHash, blockNumber: 1338 };
+    throw new ServiceUnavailableException('Configura HSK antes de confirmar pagos');
   }
 
   async getLoanProofs(loanId: string): Promise<

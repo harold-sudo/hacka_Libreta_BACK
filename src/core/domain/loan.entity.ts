@@ -10,6 +10,7 @@ export interface Loan {
   borrower_id: string;
   capital: number;
   currency: LoanCurrency;
+  settlement_network?: 'stellar:testnet' | null;
   total_installments: number;
   installment_amount: number;
   frequency: LoanFrequency;

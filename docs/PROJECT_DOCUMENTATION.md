@@ -1,3 +1,5 @@
+> **Estado Pollar — 2026-09-12:** integración de cuotas implementada para Stellar testnet y HSK 133: intenciones autenticadas, verificación del pago, conciliación SQL idempotente y anclaje HSK con recuperación. Migración aplicada y verificada en Supabase; falta validar una cuota real de testnet. La transferencia libre no liquida cuotas. Las referencias posteriores a Ethereum/Mainnet, webhooks de liquidación o widgets antiguos son diseño histórico. [Contrato vigente y activación paso a paso](POLLAR_INSTALLMENTS.md).
+
 # LIBRETA — Microcrédito Verificable & Portabilidad de Reputación Financiera
 ## Documento Maestro de Arquitectura, Especificación Integral & Dossier de Hackathon
 
@@ -233,9 +235,9 @@ Diseñado con base en las directrices oficiales del **Hackathon Submission Guide
 ## 9. CUMPLIMIENTO DE REQUISITOS DE LOS BOUNTIES
 
 ### Requisitos Bounty Pollar:
-- [x] Motor de pagos Pollar integrado en flujo de liquidación de cuotas (`@pollar/react`).
-- [x] Transacción real en **Mainnet** por 1 USDC ejecutada y verificable en explorador.
-- [x] Webhook backend con verificación de firma HMAC-SHA256 (`POST /api/webhooks/pollar`).
+- [x] SDK Pollar integrado con conciliación de cuotas Stellar testnet y anclaje HSK; pendiente activación y prueba integrada.
+- [ ] Transacción real en **Mainnet** por 1 USDC ejecutada y verificable en explorador.
+- [ ] Webhook oficial conciliado; endpoint legado protegido con HMAC y deshabilitado para liquidación.
 - [x] Repositorio público con README detallado y video demo menor a 3 minutos.
 
 ### Requisitos Bounty Unlock Protocol:

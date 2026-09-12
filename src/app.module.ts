@@ -12,6 +12,7 @@ import { RoutesModule } from './application/modules/routes/routes.module';
 import { LenderModule } from './application/modules/lender/lender.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { PollarModule } from './application/modules/pollar/pollar.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { AppService } from './app.service';
       envFilePath: '.env',
     }),
     CoreModule,
+    PollarModule,
     InfrastructureModule,
     LoansModule,
     BorrowerModule,

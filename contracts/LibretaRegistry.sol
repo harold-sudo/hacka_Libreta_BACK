@@ -26,7 +26,7 @@ contract LibretaRegistry {
         uint16 installmentNumber; // Número correlativo de cuota
         uint256 timestamp;        // Momento de verificación bilateral
         bool isDigital;           // true: liquidado vía Pollar (USDC); false: efectivo
-        bytes32 externalTxHash;   // Hash de la transacción mainnet en Pollar (si aplica)
+        bytes32 externalTxHash;   // Stellar: keccak256("stellar:testnet:" + txHash sin 0x); sin PII
     }
 
     // Mapeo principal: loanId (bytes32) => Estructura del crédito

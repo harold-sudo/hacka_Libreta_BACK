@@ -140,10 +140,8 @@ export class CryptoEngineService {
     signature: string,
     secret?: string,
   ): boolean {
-    const secretKey =
-      secret ||
-      process.env.POLLAR_WEBHOOK_SECRET ||
-      'libreta_pollar_hmac_secret_2026';
+    const secretKey = secret || process.env.POLLAR_WEBHOOK_SECRET;
+    if (!secretKey || !/^[a-fA-F0-9]{64}$/.test(signature)) return false;
 
     const expectedSignature = crypto
       .createHmac('sha256', secretKey)

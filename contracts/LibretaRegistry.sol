@@ -5,17 +5,6 @@ pragma solidity ^0.8.20;
  * @title LibretaRegistry
  * @author LIBRETA Core Team (ETH Bolivia Buildathon 2026)
  * @notice Registro descentralizado e inmutable de atestaciones de microcrédito.
- * 
- * ==============================================================================
- * CUMPLIMIENTO REGULATORIO Y POLÍTICA DE PRIVACIDAD (ZERO PII ON-CHAIN):
- * 1. Este contrato NO almacena nombres, números de identidad (CI/DNI), teléfonos,
- *    direcciones físicas, coordenadas geográficas ni datos personales sensibles.
- * 2. Cumple estrictamente con normativas de Habeas Data y el Derecho al Olvido:
- *    toda la información sensible reside off-chain cifrada. On-chain solo existen
- *    identificadores derivados por keccak256 y marcas temporales.
- * 3. NO INTERMEDIACIÓN FINANCIERA: Este contrato es un software neutral de registro
- *    probatorio (Ley Modelo UNCITRAL). No retiene, custodia ni intermedia fondos.
- * ==============================================================================
  */
 contract LibretaRegistry {
     
@@ -74,11 +63,6 @@ contract LibretaRegistry {
 
     /**
      * @notice Registra un nuevo microcrédito acordado entre prestamista y prestatario.
-     * @dev No almacena capital monetario explícito on-chain para resguardo de privacidad.
-     * @param _loanId Identificador único universal en formato bytes32.
-     * @param _loanHash Hash criptográfico del contrato privado de mutuo off-chain.
-     * @param _borrower Dirección pública de la wallet del prestatario.
-     * @param _totalInstallments Cantidad total de cuotas acordadas.
      */
     function registerLoan(
         bytes32 _loanId,
@@ -108,11 +92,6 @@ contract LibretaRegistry {
 
     /**
      * @notice Registra una prueba de pago confirmada mediante atestación bilateral o Pollar.
-     * @param _loanId Identificador del crédito.
-     * @param _installmentNumber Número de cuota a liquidar (estricto orden secuencial).
-     * @param _receiptHash Hash del comprobante firmado por ambas partes.
-     * @param _isDigital true si se liquidó vía Pollar (USDC), false si fue en efectivo.
-     * @param _externalTxHash Hash de la transacción de Pollar en Mainnet (o bytes32(0) para efectivo).
      */
     function confirmPayment(
         bytes32 _loanId,
@@ -138,7 +117,6 @@ contract LibretaRegistry {
 
         emit PaymentConfirmed(_loanId, _installmentNumber, _receiptHash, _isDigital, block.timestamp);
 
-        // Si se han liquidado todas las cuotas, se certifica la finalización exitosa
         if (loan.paidInstallments == loan.totalInstallments) {
             loan.status = LoanStatus.COMPLETED;
             loan.completedAt = block.timestamp;
@@ -155,7 +133,6 @@ contract LibretaRegistry {
 
     /**
      * @notice Retorna el listado completo de atestaciones de pago de un crédito.
-     * @dev Utilizado para auditorías token-gated (Unlock Protocol) por entidades financieras.
      */
     function getLoanProofs(bytes32 _loanId) external view returns (PaymentProof[] memory) {
         return loanProofs[_loanId];

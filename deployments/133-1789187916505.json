@@ -1,0 +1,10 @@
+{
+  "chainId": 133,
+  "address": "0x785f249c2B25F3306b53F9D2432313e8FC9239Ce",
+  "transactionHash": "0xb7fd83d769a6b8a021c5558dc5f13bd45064a887e24fd0b4a69c5dd117b50494",
+  "deployer": "0x6bc9AEd352A786df5bF1Aa6091442606A7B1e45c",
+  "compiler": "0.8.20+commit.a1b79de6.Emscripten.clang",
+  "status": "confirmed",
+  "blockNumber": 33000632,
+  "runtimeCodeHash": "0x640b2779ae507fa71003a53eadd6aa76285899eefc9c8b3c5e0a3e6c3b810213"
+}

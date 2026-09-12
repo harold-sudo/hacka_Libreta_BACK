@@ -3,6 +3,7 @@ import { AuditListenerService } from './audit-listener.service';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AuditService } from './audit.service';
+import { Contract } from 'ethers';
 
 type Msg = Record<string, unknown>;
 
@@ -63,6 +64,44 @@ function assertZeroPii(metadata: Msg) {
 }
 
 describe('AuditListenerService.processEvent (mapping on-chain → audit_logs)', () => {
+  it('procesa el log dentro del payload real de suscripción ethers v6', async () => {
+    const { listener, record } = makeService();
+    const callbacks = new Map<string, (...args: unknown[]) => void>();
+    const contract = {
+      on: (name: string, callback: (...args: unknown[]) => void) => {
+        callbacks.set(name, callback);
+      },
+    } as unknown as Contract;
+    const live = listener as unknown as {
+      attachListeners: (contract: Contract) => void;
+      handleQueue: Promise<void>;
+    };
+    live.attachListeners(contract);
+    callbacks.get('PaymentConfirmed')?.({
+      log: {
+        args: {
+          loanId: '0xCC',
+          installmentNumber: 3n,
+          receiptHash: '0xDD',
+          isDigital: true,
+          timestamp: 1700000002n,
+        },
+        blockNumber: 102,
+        transactionHash: '0xtx3',
+        index: 2,
+      },
+    });
+    await live.handleQueue;
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: 'PAYMENT_CONFIRMED',
+        txHash: '0xtx3',
+        blockNumber: 102,
+        idempotencyKey: 'onchain:0xtx3:2:payment_confirmed',
+      }),
+    );
+  });
+
   it('mapea LoanRegistered con actor=lender, metadata sin PII y key idempotente', async () => {
     const { svc, record } = makeService();
     await svc.processEvent('LoanRegistered', {

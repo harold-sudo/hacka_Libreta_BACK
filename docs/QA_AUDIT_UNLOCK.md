@@ -64,3 +64,8 @@ cd hacka_Libreta_FRONT
 npm run lint                 # oxlint
 npm run build                # tsc -b && vite build
 ```
+## Verificación de arranque al unificar pantallas
+
+Se corrigió la inyección de UnlockVerifierDeps: el valor por defecto no hacía opcional la dependencia para Nest. Ahora usa @Optional y un token de inyección explícito. Las pruebas por construcción directa no detectaban este fallo; se verifica también el arranque real del backend.
+
+Verificación de integración: se aplicó la migración existente de auditoría en Supabase (RLS activo; anon/authenticated sin lectura). El listener HSK usa polling por bloques porque el RPC devolvía filter not found; los callbacks extraen payload.log de ethers v6, cubierto por una prueba de regresión. qa-smoke declara los ABI antes de usarlos para evitar ReferenceError. La compra de una Key y el pago autenticado requieren validación interactiva con las wallets del usuario.

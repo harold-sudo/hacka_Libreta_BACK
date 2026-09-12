@@ -86,6 +86,8 @@ export class AuditListenerService {
       this.configService.get<string>('HSK_RPC_URL') ||
       'https://testnet.hsk.xyz';
     const provider = new JsonRpcProvider(rpcUrl, undefined, {
+      // HSK RPC may expire server-side filters; read logs by block instead.
+      polling: true,
       pollingInterval: 4000,
     });
 
@@ -154,15 +156,15 @@ export class AuditListenerService {
 
   private attachListeners(contract: Contract): void {
     void contract.on('LoanRegistered', (...args: unknown[]) => {
-      const event = args[args.length - 1] as AuditEventLog;
+      const { log: event } = args[args.length - 1] as { log: AuditEventLog };
       void this.onEvent('LoanRegistered', event);
     });
     void contract.on('PaymentConfirmed', (...args: unknown[]) => {
-      const event = args[args.length - 1] as AuditEventLog;
+      const { log: event } = args[args.length - 1] as { log: AuditEventLog };
       void this.onEvent('PaymentConfirmed', event);
     });
     void contract.on('LoanCompleted', (...args: unknown[]) => {
-      const event = args[args.length - 1] as AuditEventLog;
+      const { log: event } = args[args.length - 1] as { log: AuditEventLog };
       void this.onEvent('LoanCompleted', event);
     });
   }

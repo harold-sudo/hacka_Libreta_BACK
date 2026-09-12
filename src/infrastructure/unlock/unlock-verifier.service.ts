@@ -1,5 +1,7 @@
 import {
   Injectable,
+  Inject,
+  Optional,
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -39,6 +41,8 @@ export class UnlockVerifierService implements IUnlockVerifierService {
 
   constructor(
     private readonly configService: ConfigService,
+    @Optional()
+    @Inject('UNLOCK_VERIFIER_TEST_DEPS')
     private readonly testDeps: UnlockVerifierDeps = {},
   ) {
     const rpcUrl =

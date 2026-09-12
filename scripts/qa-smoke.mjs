@@ -27,6 +27,15 @@ try {
   if (error.code !== 'ENOENT') throw error;
 }
 
+const LIBRETA_ABI = [
+  'function getLoanProofs(bytes32 _loanId) external view returns (tuple(bytes32 receiptHash, uint16 installmentNumber, uint256 timestamp, bool isDigital, bytes32 externalTxHash)[])',
+  'function loans(bytes32 _loanId) external view returns (bytes32 loanHash, address lender, address borrower, uint16 totalInstallments, uint16 paidInstallments, uint256 createdAt, uint256 completedAt, uint8 status)',
+];
+
+const UNLOCK_LOCK_ABI = [
+  'function getHasValidKey(address _recipient) external view returns (bool)',
+  'function keyExpirationTimestampFor(address _recipient) external view returns (uint256)',
+];
 const stats = { pass: 0, fail: 0, skip: 0 };
 const failures = [];
 
@@ -183,13 +192,3 @@ if (failures.length > 0) {
 } else {
   process.exitCode = 0;
 }
-
-const LIBRETA_ABI = [
-  'function getLoanProofs(bytes32 _loanId) external view returns (tuple(bytes32 receiptHash, uint16 installmentNumber, uint256 timestamp, bool isDigital, bytes32 externalTxHash)[])',
-  'function loans(bytes32 _loanId) external view returns (bytes32 loanHash, address lender, address borrower, uint16 totalInstallments, uint16 paidInstallments, uint256 createdAt, uint256 completedAt, uint8 status)',
-];
-
-const UNLOCK_LOCK_ABI = [
-  'function getHasValidKey(address _recipient) external view returns (bool)',
-  'function keyExpirationTimestampFor(address _recipient) external view returns (uint256)',
-];

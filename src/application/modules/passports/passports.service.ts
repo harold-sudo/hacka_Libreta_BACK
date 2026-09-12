@@ -122,7 +122,8 @@ export class PassportsService {
           message:
             'Se requiere una membresía activa en Unlock Protocol para consultar el expediente forense.',
           paywallConfig: {
-            network: 8453,
+            network: Number(process.env.UNLOCK_CHAIN_ID) || 11155111,
+            lockAddress: process.env.UNLOCK_LOCK_ADDRESS,
             recipient: dto.viewerAddress,
           },
         },

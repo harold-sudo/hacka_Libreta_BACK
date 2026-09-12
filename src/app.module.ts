@@ -14,6 +14,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PollarModule } from './application/modules/pollar/pollar.module';
 import { AuthModule } from './application/modules/auth/auth.module';
+import { AuditModule } from './application/modules/audit/audit.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { AuthModule } from './application/modules/auth/auth.module';
     PassportsModule,
     RoutesModule,
     LenderModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [AppService],

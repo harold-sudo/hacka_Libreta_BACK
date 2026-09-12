@@ -24,13 +24,16 @@ export class RegisterDto {
   role: 'BORROWER' | 'LENDER';
 
   @IsString()
-  @MinLength(2, { message: 'El nombre o alias debe tener al menos 2 caracteres' })
+  @MinLength(2, {
+    message: 'El nombre o alias debe tener al menos 2 caracteres',
+  })
   @MaxLength(100)
   aliasName: string;
 
   @IsString()
   @Matches(/^0x[0-9a-fA-F]{40}$/, {
-    message: 'La dirección de billetera debe ser una dirección hexadecimal 0x de 40 caracteres',
+    message:
+      'La dirección de billetera debe ser una dirección hexadecimal 0x de 40 caracteres',
   })
   walletAddress: string;
 

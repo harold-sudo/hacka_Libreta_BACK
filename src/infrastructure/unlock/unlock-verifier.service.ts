@@ -1,4 +1,8 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
 import {
@@ -12,31 +16,63 @@ const PUBLIC_LOCK_ABI = [
   'function tokenOfOwnerByIndex(address _owner, uint256 _index) external view returns (uint256)',
 ];
 
+// Seam de test: permite inyectar un provider/contrato falsos sin tocar RPC.
+export interface UnlockVerifierDeps {
+  provider?: ethers.JsonRpcProvider | null;
+  lockContract?: ethers.Contract | null;
+  lockAddress?: string;
+}
+
 @Injectable()
 export class UnlockVerifierService implements IUnlockVerifierService {
   private readonly logger = new Logger(UnlockVerifierService.name);
   private provider: ethers.JsonRpcProvider | null = null;
   private lockContract: ethers.Contract | null = null;
   private readonly lockAddress: string;
+  private readonly cacheTtlMs: number;
+  // Caché en memoria TTL de getHasValidKey para evitar golpear RPC en cada
+  // verificación repetida (verifyKey + getAuditDossier del mismo usuario).
+  private readonly membershipCache = new Map<
+    string,
+    { expiresAt: number; result: UnlockVerificationResult }
+  >();
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly testDeps: UnlockVerifierDeps = {},
+  ) {
     const rpcUrl =
       this.configService.get<string>('UNLOCK_NETWORK_RPC') ||
       'https://mainnet.base.org';
     this.lockAddress =
-      this.configService.get<string>('UNLOCK_LOCK_ADDRESS') ||
-      '0x0000000000000000000000000000000000000000';
+      this.testDeps.lockAddress ??
+      (this.configService.get<string>('UNLOCK_LOCK_ADDRESS') ||
+        '0x0000000000000000000000000000000000000000');
+    this.cacheTtlMs = Number(
+      this.configService.get<string>('UNLOCK_CACHE_TTL_MS') || '30000',
+    );
 
     try {
       if (this.lockAddress !== ethers.ZeroAddress) {
-        const request = new ethers.FetchRequest(rpcUrl);
-        request.timeout = 8000;
-        this.provider = new ethers.JsonRpcProvider(request);
-        this.lockContract = new ethers.Contract(
-          this.lockAddress,
-          PUBLIC_LOCK_ABI,
-          this.provider,
-        );
+        if (this.testDeps.provider) {
+          this.provider = this.testDeps.provider;
+          this.lockContract =
+            this.testDeps.lockContract ??
+            new ethers.Contract(
+              this.lockAddress,
+              PUBLIC_LOCK_ABI,
+              this.provider,
+            );
+        } else {
+          const request = new ethers.FetchRequest(rpcUrl);
+          request.timeout = 8000;
+          this.provider = new ethers.JsonRpcProvider(request);
+          this.lockContract = new ethers.Contract(
+            this.lockAddress,
+            PUBLIC_LOCK_ABI,
+            this.provider,
+          );
+        }
       }
     } catch (err: any) {
       this.logger.warn(`Could not connect to Unlock RPC: ${err.message}`);
@@ -50,9 +86,14 @@ export class UnlockVerifierService implements IUnlockVerifierService {
   }): Promise<UnlockVerificationResult> {
     const { viewerAddress, signature, timestamp } = params;
 
-    if (!ethers.isAddress(viewerAddress) || !signature || !timestamp ||
-        !Number.isSafeInteger(timestamp) || timestamp > Math.floor(Date.now()/1000) + 30 ||
-        Math.floor(Date.now()/1000) - timestamp > 300) {
+    if (
+      !ethers.isAddress(viewerAddress) ||
+      !signature ||
+      !timestamp ||
+      !Number.isSafeInteger(timestamp) ||
+      timestamp > Math.floor(Date.now() / 1000) + 30 ||
+      Math.floor(Date.now() / 1000) - timestamp > 300
+    ) {
       return { hasValidKey: false, accessGranted: false };
     }
     // La firma prueba control de la wallet y caduca a los cinco minutos.
@@ -74,9 +115,21 @@ export class UnlockVerifierService implements IUnlockVerifierService {
 
     // Consulta on-chain del contrato PublicLock si está configurado
     if (this.lockContract && this.lockAddress !== ethers.ZeroAddress) {
+      const cacheKey = viewerAddress.toLowerCase();
+      const cached = this.membershipCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        return cached.result;
+      }
       try {
-        const expectedChain = Number(this.configService.get<string>('UNLOCK_CHAIN_ID'));
-        if (!Number.isSafeInteger(expectedChain) || expectedChain <= 0 || Number((await this.provider!.getNetwork()).chainId) !== expectedChain) throw new Error('Unlock network mismatch');
+        const expectedChain = Number(
+          this.configService.get<string>('UNLOCK_CHAIN_ID'),
+        );
+        if (
+          !Number.isSafeInteger(expectedChain) ||
+          expectedChain <= 0 ||
+          Number((await this.provider!.getNetwork()).chainId) !== expectedChain
+        )
+          throw new Error('Unlock network mismatch');
         const isValid: boolean =
           await this.lockContract.getHasValidKey(viewerAddress);
         let expiration = 0;
@@ -93,18 +146,27 @@ export class UnlockVerifierService implements IUnlockVerifierService {
             tokenId = undefined;
           }
         }
-        return {
+        const result: UnlockVerificationResult = {
           hasValidKey: isValid,
           expirationTimestamp: expiration,
           tokenId: tokenId,
           accessGranted: isValid,
         };
+        if (this.cacheTtlMs > 0) {
+          this.membershipCache.set(cacheKey, {
+            expiresAt: Date.now() + this.cacheTtlMs,
+            result,
+          });
+        }
+        return result;
       } catch (err: any) {
         this.logger.error(`Error consultando contrato Unlock: ${err.message}`);
       }
     }
 
-    throw new ServiceUnavailableException('Unlock no está configurado o no se pudo verificar la membresía en la red.');
+    throw new ServiceUnavailableException(
+      'Unlock no está configurado o no se pudo verificar la membresía en la red.',
+    );
   }
 
   /**

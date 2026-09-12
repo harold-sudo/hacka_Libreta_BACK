@@ -19,17 +19,14 @@ export class AuthService {
     const admin = this.supabaseService.getAdminClient();
 
     // Call stored procedure to create confirmed user + profile without email rate limits
-    const { error: regError } = await admin.rpc(
-      'register_libreta_user',
-      {
-        p_email: dto.email.toLowerCase().trim(),
-        p_password: dto.password,
-        p_role: dto.role,
-        p_alias_name: dto.aliasName.trim(),
-        p_wallet_address: dto.walletAddress.toLowerCase().trim(),
-        p_passport_slug: dto.passportSlug || null,
-      },
-    );
+    const { error: regError } = await admin.rpc('register_libreta_user', {
+      p_email: dto.email.toLowerCase().trim(),
+      p_password: dto.password,
+      p_role: dto.role,
+      p_alias_name: dto.aliasName.trim(),
+      p_wallet_address: dto.walletAddress.toLowerCase().trim(),
+      p_passport_slug: dto.passportSlug || null,
+    });
 
     if (regError) {
       this.logger.error(`Error in register_libreta_user: ${regError.message}`);
@@ -48,11 +45,14 @@ export class AuthService {
       });
 
     if (authError || !authData.session) {
-      this.logger.warn(`Registered but auto-login failed: ${authError?.message}`);
+      this.logger.warn(
+        `Registered but auto-login failed: ${authError?.message}`,
+      );
       return {
         success: true,
         accessToken: null,
-        message: 'Cuenta creada exitosamente. Por favor ingresa con tus credenciales.',
+        message:
+          'Cuenta creada exitosamente. Por favor ingresa con tus credenciales.',
       };
     }
 
@@ -60,7 +60,8 @@ export class AuthService {
       success: true,
       accessToken: authData.session.access_token,
       expiresAt: authData.session.expires_at,
-      user: (await this.getProfile(authData.user.id, authData.user.email || '')).user,
+      user: (await this.getProfile(authData.user.id, authData.user.email || ''))
+        .user,
     };
   }
 
@@ -88,7 +89,10 @@ export class AuthService {
       .eq('auth_user_id', authData.user.id)
       .maybeSingle();
 
-    if (profileError || !profile) throw new UnauthorizedException('Tu cuenta no tiene un perfil CREDITCHAIN válido. Completa o revisa el registro.');
+    if (profileError || !profile)
+      throw new UnauthorizedException(
+        'Tu cuenta no tiene un perfil CREDITCHAIN válido. Completa o revisa el registro.',
+      );
 
     return {
       success: true,
@@ -121,7 +125,16 @@ export class AuthService {
 
     return {
       success: true,
-      user: { id:authUserId,profileId:profile.id,email,role:profile.role,aliasName:profile.alias_name,walletAddress:profile.wallet_address,passportSlug:profile.passport_slug,passportEnabled:profile.passport_enabled },
+      user: {
+        id: authUserId,
+        profileId: profile.id,
+        email,
+        role: profile.role,
+        aliasName: profile.alias_name,
+        walletAddress: profile.wallet_address,
+        passportSlug: profile.passport_slug,
+        passportEnabled: profile.passport_enabled,
+      },
     };
   }
 }

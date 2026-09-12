@@ -33,6 +33,11 @@ export class PassportsController {
     @Headers('x-viewer-signature') signature: string,
     @Headers('x-viewer-timestamp') timestamp: string,
   ) {
-    return this.passportsService.getAuditDossier(slug, viewerAddress, signature, Number(timestamp));
+    return this.passportsService.getAuditDossier(
+      slug,
+      viewerAddress,
+      signature,
+      Number(timestamp),
+    );
   }
 }

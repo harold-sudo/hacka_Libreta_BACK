@@ -12,6 +12,7 @@ import type { IInstallmentRepository } from '../../../core/interfaces/installmen
 import type { ILoanRepository } from '../../../core/interfaces/loan-repository.interface';
 import type { IBlockchainService } from '../../../core/interfaces/blockchain-service.interface';
 import { CryptoEngineService } from '../../../core/services/crypto-engine.service';
+import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { CollectCashDto } from './dto/collect-cash.dto';
 import { PollarConfirmDto } from './dto/pollar-confirm.dto';
 
@@ -36,6 +37,7 @@ export class InstallmentsService {
     private readonly blockchainService: IBlockchainService,
     private readonly cryptoEngine: CryptoEngineService,
     @Inject('IProfileRepository') private readonly profiles: IProfileRepository,
+    private readonly auditService: AuditService,
   ) {}
 
   async generateOtpChallenge(installmentId: string, userId: string) {
@@ -51,13 +53,16 @@ export class InstallmentsService {
 
     const profile = await this.profiles.findByAuthUserId(userId);
     const loan = await this.loanRepository.findById(installment.loan_id);
-    if (!profile || profile.role !== 'BORROWER' || loan?.borrower_id !== profile.id) throw new ForbiddenException('Esta cuota no pertenece al prestatario');
+    if (
+      !profile ||
+      profile.role !== 'BORROWER' ||
+      loan?.borrower_id !== profile.id
+    )
+      throw new ForbiddenException('Esta cuota no pertenece al prestatario');
     const challenge = this.cryptoEngine.generateOtp(300);
     this.otpChallenges.set(installmentId, challenge);
 
-    this.logger.log(
-      `Desafío OTP generado para cuota ${installmentId}`,
-    );
+    this.logger.log(`Desafío OTP generado para cuota ${installmentId}`);
 
     return {
       otpCode: challenge.otpCode,
@@ -66,7 +71,11 @@ export class InstallmentsService {
     };
   }
 
-  async collectCash(installmentId: string, dto: CollectCashDto, userId: string) {
+  async collectCash(
+    installmentId: string,
+    dto: CollectCashDto,
+    userId: string,
+  ) {
     const installment =
       await this.installmentRepository.findById(installmentId);
     if (!installment) {
@@ -78,12 +87,28 @@ export class InstallmentsService {
     }
 
     const actor = await this.profiles.findByAuthUserId(userId);
-    const assignedLoan = await this.loanRepository.findById(installment.loan_id);
-    if (!actor || actor.role !== 'LENDER' || assignedLoan?.lender_id !== actor.id) throw new ForbiddenException('Solo el prestamista titular puede confirmar este cobro presencial');
-    if (Math.round(Number(installment.amount)*100) !== Math.round(dto.amount*100)) throw new BadRequestException('El importe no coincide con la cuota');
+    const assignedLoan = await this.loanRepository.findById(
+      installment.loan_id,
+    );
+    if (
+      !actor ||
+      actor.role !== 'LENDER' ||
+      assignedLoan?.lender_id !== actor.id
+    )
+      throw new ForbiddenException(
+        'Solo el prestamista titular puede confirmar este cobro presencial',
+      );
+    if (
+      Math.round(Number(installment.amount) * 100) !==
+      Math.round(dto.amount * 100)
+    )
+      throw new BadRequestException('El importe no coincide con la cuota');
     // El desafío debe existir y haber sido emitido al prestatario.
     const cachedChallenge = this.otpChallenges.get(installmentId);
-    if (!cachedChallenge) throw new BadRequestException('Solicita un OTP válido al prestatario antes de cobrar');
+    if (!cachedChallenge)
+      throw new BadRequestException(
+        'Solicita un OTP válido al prestatario antes de cobrar',
+      );
     if (cachedChallenge) {
       const isValid = this.cryptoEngine.verifyOtp(
         dto.borrowerOtp,
@@ -129,6 +154,22 @@ export class InstallmentsService {
         receipt_hash: receiptHash,
         hsk_sync_status: 'SYNCED',
       });
+
+    // Auditoría Zero-PII del cobro presencial confirmado en cadena.
+    await this.auditService.record({
+      eventType: 'PAYMENT_CONFIRMED',
+      loanId: loan.hsk_loan_id,
+      actorAddress: actor.wallet_address,
+      txHash: blockchainRes.txHash,
+      blockNumber: blockchainRes.blockNumber,
+      metadata: {
+        installmentNumber: installment.installment_number,
+        receiptHash: receiptHash.toLowerCase(),
+        paymentMethod: 'CASH',
+        installmentUuid: installment.id,
+      },
+      idempotencyKey: `onchain:${blockchainRes.txHash.toLowerCase()}:0:payment_confirmed`,
+    });
 
     // Verificar si se completó el crédito
     await this.checkAndCompleteLoan(loan.id);

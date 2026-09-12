@@ -26,7 +26,10 @@ export class InstallmentsController {
     @Body() _dto: OtpChallengeDto,
     @Req() req: any,
   ) {
-    return this.installmentsService.generateOtpChallenge(installmentId, req.user.id);
+    return this.installmentsService.generateOtpChallenge(
+      installmentId,
+      req.user.id,
+    );
   }
 
   @Post(':id/collect-cash')
@@ -37,13 +40,17 @@ export class InstallmentsController {
     @Body() dto: CollectCashDto,
     @Req() req: any,
   ) {
-    return this.installmentsService.collectCash(installmentId, dto, req.user.id);
+    return this.installmentsService.collectCash(
+      installmentId,
+      dto,
+      req.user.id,
+    );
   }
 
   @Post(':id/pollar-confirm')
   @UseGuards(SupabaseAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async confirmPollar(
+  confirmPollar(
     @Param('id') installmentId: string,
     @Body() dto: PollarConfirmDto,
   ) {

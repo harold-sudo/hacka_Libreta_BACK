@@ -1,4 +1,8 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
 import { IBlockchainService } from '../../core/interfaces/blockchain-service.interface';
@@ -77,14 +81,16 @@ export class HskBlockchainService implements IBlockchainService {
           blockNumber: receipt.blockNumber,
         };
       } catch (err: any) {
-        this.logger.error(
-          `On-chain registerLoan error: ${err.message}.`,
+        this.logger.error(`On-chain registerLoan error: ${err.message}.`);
+        throw new ServiceUnavailableException(
+          'HSK no confirmó la transacción; no se generó un comprobante simulado',
         );
-        throw new ServiceUnavailableException('HSK no confirmó la transacción; no se generó un comprobante simulado');
       }
     }
 
-    throw new ServiceUnavailableException('Configura HSK antes de registrar préstamos');
+    throw new ServiceUnavailableException(
+      'Configura HSK antes de registrar préstamos',
+    );
   }
 
   async confirmPayment(params: {
@@ -117,14 +123,16 @@ export class HskBlockchainService implements IBlockchainService {
           blockNumber: receipt.blockNumber,
         };
       } catch (err: any) {
-        this.logger.error(
-          `On-chain confirmPayment error: ${err.message}.`,
+        this.logger.error(`On-chain confirmPayment error: ${err.message}.`);
+        throw new ServiceUnavailableException(
+          'HSK no confirmó la transacción; no se generó un comprobante simulado',
         );
-        throw new ServiceUnavailableException('HSK no confirmó la transacción; no se generó un comprobante simulado');
       }
     }
 
-    throw new ServiceUnavailableException('Configura HSK antes de confirmar pagos');
+    throw new ServiceUnavailableException(
+      'Configura HSK antes de confirmar pagos',
+    );
   }
 
   async getLoanProofs(loanId: string): Promise<
@@ -153,6 +161,8 @@ export class HskBlockchainService implements IBlockchainService {
       }
     }
 
-    throw new ServiceUnavailableException('No se pudieron consultar las pruebas HSK');
+    throw new ServiceUnavailableException(
+      'No se pudieron consultar las pruebas HSK',
+    );
   }
 }

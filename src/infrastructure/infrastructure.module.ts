@@ -6,8 +6,11 @@ import { SupabaseLoanRepository } from './supabase/repositories/supabase-loan.re
 import { SupabaseInstallmentRepository } from './supabase/repositories/supabase-installment.repository';
 import { SupabaseRouteRepository } from './supabase/repositories/supabase-route.repository';
 import { SupabaseSyncQueueRepository } from './supabase/repositories/supabase-sync-queue.repository';
+import { SupabaseAuditLogRepository } from './supabase/repositories/supabase-audit-log.repository';
 import { HskBlockchainService } from './blockchain/hsk-blockchain.service';
 import { UnlockVerifierService } from './unlock/unlock-verifier.service';
+import { AuditService } from './audit/audit.service';
+import { AuditListenerService } from './audit/audit-listener.service';
 
 @Global()
 @Module({
@@ -19,8 +22,11 @@ import { UnlockVerifierService } from './unlock/unlock-verifier.service';
     SupabaseInstallmentRepository,
     SupabaseRouteRepository,
     SupabaseSyncQueueRepository,
+    SupabaseAuditLogRepository,
     HskBlockchainService,
     UnlockVerifierService,
+    AuditService,
+    AuditListenerService,
     // Dependency Inversion Tokens
     { provide: 'IProfileRepository', useClass: SupabaseProfileRepository },
     { provide: 'ILoanRepository', useClass: SupabaseLoanRepository },
@@ -30,6 +36,7 @@ import { UnlockVerifierService } from './unlock/unlock-verifier.service';
     },
     { provide: 'IRouteRepository', useClass: SupabaseRouteRepository },
     { provide: 'ISyncQueueRepository', useClass: SupabaseSyncQueueRepository },
+    { provide: 'IAuditLogRepository', useClass: SupabaseAuditLogRepository },
     { provide: 'IBlockchainService', useClass: HskBlockchainService },
     { provide: 'IUnlockVerifierService', useClass: UnlockVerifierService },
   ],
@@ -40,13 +47,16 @@ import { UnlockVerifierService } from './unlock/unlock-verifier.service';
     SupabaseInstallmentRepository,
     SupabaseRouteRepository,
     SupabaseSyncQueueRepository,
+    SupabaseAuditLogRepository,
     HskBlockchainService,
     UnlockVerifierService,
+    AuditService,
     'IProfileRepository',
     'ILoanRepository',
     'IInstallmentRepository',
     'IRouteRepository',
     'ISyncQueueRepository',
+    'IAuditLogRepository',
     'IBlockchainService',
     'IUnlockVerifierService',
   ],

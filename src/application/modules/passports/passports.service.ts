@@ -12,6 +12,7 @@ import type { IInstallmentRepository } from '../../../core/interfaces/installmen
 import type { IBlockchainService } from '../../../core/interfaces/blockchain-service.interface';
 import { LriCalculatorService } from '../../../core/services/lri-calculator.service';
 import { UnlockVerifierService } from '../../../infrastructure/unlock/unlock-verifier.service';
+import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { VerifyKeyDto } from './dto/verify-key.dto';
 
 @Injectable()
@@ -29,6 +30,7 @@ export class PassportsService {
     private readonly blockchainService: IBlockchainService,
     private readonly lriCalculator: LriCalculatorService,
     private readonly unlockVerifier: UnlockVerifierService,
+    private readonly auditService: AuditService,
   ) {}
 
   async getSummary(slug: string) {
@@ -115,6 +117,15 @@ export class PassportsService {
     });
 
     if (!verification.hasValidKey) {
+      await this.auditService.record({
+        eventType: 'UNAUTHORIZED_ACCESS_ATTEMPT',
+        actorAddress: dto.viewerAddress,
+        metadata: {
+          passportSlug: slug,
+          reason: 'unlock_membership_invalid',
+          hasValidKey: false,
+        },
+      });
       throw new HttpException(
         {
           success: false,
@@ -139,19 +150,40 @@ export class PassportsService {
     };
   }
 
-  async getAuditDossier(slug: string, viewerAddress: string, signature?: string, timestamp?: number) {
+  async getAuditDossier(
+    slug: string,
+    viewerAddress: string,
+    signature?: string,
+    timestamp?: number,
+  ) {
     const profile = await this.profileRepository.findByPassportSlug(slug);
     if (!profile) {
       throw new NotFoundException(`Pasaporte "${slug}" no encontrado`);
     }
 
-    if (profile.passport_enabled !== true) throw new NotFoundException('Pasaporte no publicado');
-    if (!viewerAddress || !signature || !timestamp) throw new HttpException('Firma de la wallet requerida', HttpStatus.UNAUTHORIZED);
+    if (profile.passport_enabled !== true)
+      throw new NotFoundException('Pasaporte no publicado');
+    if (!viewerAddress || !signature || !timestamp)
+      throw new HttpException(
+        'Firma de la wallet requerida',
+        HttpStatus.UNAUTHORIZED,
+      );
     {
       const verification = await this.unlockVerifier.verifyKey({
-        viewerAddress, signature, timestamp,
+        viewerAddress,
+        signature,
+        timestamp,
       });
       if (!verification.hasValidKey) {
+        await this.auditService.record({
+          eventType: 'UNAUTHORIZED_ACCESS_ATTEMPT',
+          actorAddress: viewerAddress,
+          metadata: {
+            passportSlug: slug,
+            reason: 'unlock_membership_invalid',
+            hasValidKey: false,
+          },
+        });
         throw new HttpException(
           {
             success: false,
@@ -205,7 +237,9 @@ export class PassportsService {
             stellarTxHash: inst.pollar_tx_hash || null,
             paidDate: inst.paid_date,
             hskTimestamp: matchingOnChain?.timestamp ?? null,
-            hskVerified: !!matchingOnChain && matchingOnChain.receiptHash === inst.receipt_hash,
+            hskVerified:
+              !!matchingOnChain &&
+              matchingOnChain.receiptHash === inst.receipt_hash,
           });
         }
       }
@@ -220,6 +254,11 @@ export class PassportsService {
     });
 
     // Generar informe con pruebas disponibles, sin firma inventada
+    await this.auditService.record({
+      eventType: 'AUDIT_DOSSIER_GENERATED',
+      actorAddress: viewerAddress,
+      metadata: { passportSlug: profile.passport_slug || slug },
+    });
     return this.unlockVerifier.generateAuditReport({
       passportSlug: profile.passport_slug || slug,
       borrowerWallet:

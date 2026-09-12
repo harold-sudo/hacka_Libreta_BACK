@@ -75,12 +75,27 @@ export class SettlementService implements OnModuleInit, OnModuleDestroy {
       );
     const verifiedLoans: any[] = [];
     for (let offset = 0; offset < (loans ?? []).length; offset += 5) {
-      verifiedLoans.push(...await Promise.all(loans!.slice(offset, offset + 5).map(async loan => {
-        const evidence = await this.anchor.evidence(loan.hsk_loan_id);
-        return {...loan, hsk_verification: evidence.status,
-          installments: loan.installments.map((i: any) => ({...i,
-            hsk_verified: evidence.status === 'VERIFIED' && evidence.receipts.some(p => p.number === i.installment_number && p.hash === i.receipt_hash?.toLowerCase())}))};
-      })));
+      verifiedLoans.push(
+        ...(await Promise.all(
+          loans.slice(offset, offset + 5).map(async (loan) => {
+            const evidence = await this.anchor.evidence(loan.hsk_loan_id);
+            return {
+              ...loan,
+              hsk_verification: evidence.status,
+              installments: loan.installments.map((i: any) => ({
+                ...i,
+                hsk_verified:
+                  evidence.status === 'VERIFIED' &&
+                  evidence.receipts.some(
+                    (p) =>
+                      p.number === i.installment_number &&
+                      p.hash === i.receipt_hash?.toLowerCase(),
+                  ),
+              })),
+            };
+          }),
+        )),
+      );
     }
     return {
       profile,

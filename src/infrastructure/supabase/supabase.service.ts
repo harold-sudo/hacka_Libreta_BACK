@@ -29,9 +29,17 @@ export class SupabaseService {
   }
 
   createAuthClient(): SupabaseClient {
-    return createClient(this.configService.getOrThrow<string>('SUPABASE_URL'),
+    return createClient(
+      this.configService.getOrThrow<string>('SUPABASE_URL'),
       this.configService.getOrThrow<string>('SUPABASE_ANON_KEY'),
-      { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      },
+    );
   }
 
   getClient(): SupabaseClient {
@@ -45,8 +53,20 @@ export class SupabaseService {
 
 export function assertServerKey(key: string, anonKey: string): void {
   let role: string | undefined;
-  try { role = JSON.parse(Buffer.from(key.split('.')[1], 'base64url').toString()).role; } catch { /* Modern keys are not JWTs. */ }
-  if (!key || key === anonKey || (!key.startsWith('sb_secret_') && role !== 'service_role')) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY debe contener una clave secreta de servidor (service_role o sb_secret_), no la clave pública anon. Corrige el .env del backend.');
+  try {
+    role = JSON.parse(
+      Buffer.from(key.split('.')[1], 'base64url').toString(),
+    ).role;
+  } catch {
+    /* Modern keys are not JWTs. */
+  }
+  if (
+    !key ||
+    key === anonKey ||
+    (!key.startsWith('sb_secret_') && role !== 'service_role')
+  ) {
+    throw new Error(
+      'SUPABASE_SERVICE_ROLE_KEY debe contener una clave secreta de servidor (service_role o sb_secret_), no la clave pública anon. Corrige el .env del backend.',
+    );
   }
 }

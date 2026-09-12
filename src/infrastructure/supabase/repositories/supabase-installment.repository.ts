@@ -9,8 +9,13 @@ export class SupabaseInstallmentRepository implements IInstallmentRepository {
 
   constructor(private readonly supabaseService: SupabaseService) {}
   async claimCash(id: string): Promise<void> {
-    const { error } = await this.supabaseService.getAdminClient().rpc('libreta_claim_cash',{p_installment:id});
-    if (error) throw new Error('Cuota reservada para Pollar, pagada o migración pendiente');
+    const { error } = await this.supabaseService
+      .getAdminClient()
+      .rpc('libreta_claim_cash', { p_installment: id });
+    if (error)
+      throw new Error(
+        'Cuota reservada para Pollar, pagada o migración pendiente',
+      );
   }
 
   async findById(id: string): Promise<Installment | null> {

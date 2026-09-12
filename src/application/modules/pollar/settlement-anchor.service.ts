@@ -45,6 +45,29 @@ interface Registry {
 
 @Injectable()
 export class SettlementAnchorService {
+  private readonly evidenceCache = new Map<string, {until: number; value: {status: string; receipts: {number: number; hash: string}[]}}>();
+  async evidence(loanId: string) {
+    const key = `${process.env.LIBRETA_REGISTRY_ADDRESS}:${loanId}`;
+    const cached = this.evidenceCache.get(key);
+    if (cached && cached.until > Date.now()) return cached.value;
+    let value: {status: string; receipts: {number: number; hash: string}[]} = {status: 'UNAVAILABLE', receipts: []};
+    try {
+      const c = this.connection();
+      try {
+        if ((await c.provider.getNetwork()).chainId !== 133n) throw new Error('Unexpected HSK network');
+        const loan = await c.registry.loans(loanId);
+        if (loan.createdAt === 0n) value = {status: 'NOT_FOUND', receipts: []};
+        else {
+          const blockTag = Math.max(0, (await c.provider.getBlockNumber()) - 1);
+          const proofs = await c.registry.getLoanProofs(loanId, {blockTag});
+          value = {status: 'VERIFIED', receipts: proofs.map(p => ({number: Number(p.installmentNumber), hash: p.receiptHash.toLowerCase()}))};
+        }
+      } finally { c.provider.destroy(); }
+    } catch { /* A failed RPC is not evidence that the loan or its proofs exist. */ }
+    if (this.evidenceCache.size >= 500) this.evidenceCache.clear();
+    this.evidenceCache.set(key, {until: Date.now() + (value.status === 'UNAVAILABLE' ? 5000 : 30000), value});
+    return value;
+  }
   private connection() {
     const key = process.env.HSK_OPERATOR_PRIVATE_KEY;
     const address = process.env.LIBRETA_REGISTRY_ADDRESS;

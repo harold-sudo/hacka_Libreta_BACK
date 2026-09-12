@@ -19,7 +19,7 @@ export class SyncController {
   @UseGuards(SupabaseAuthGuard)
   @HttpCode(HttpStatus.OK)
   async syncBatch(@Req() req: any, @Body() dto: SyncBatchDto) {
-    const collectorId = req.user?.id || '00000000-0000-0000-0000-000000000003';
+    const collectorId = req.user.id;
     return this.syncService.processBatch(collectorId, dto);
   }
 }

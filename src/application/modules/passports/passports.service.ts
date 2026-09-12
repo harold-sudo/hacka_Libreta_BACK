@@ -37,7 +37,7 @@ export class PassportsService {
       throw new NotFoundException(`Pasaporte con slug "${slug}" no encontrado`);
     }
 
-    if (profile.passport_enabled === false) {
+    if (profile.passport_enabled !== true) {
       throw new NotFoundException(
         'Este pasaporte ha sido suspendido por su titular',
       );
@@ -139,16 +139,17 @@ export class PassportsService {
     };
   }
 
-  async getAuditDossier(slug: string, viewerAddress: string) {
+  async getAuditDossier(slug: string, viewerAddress: string, signature?: string, timestamp?: number) {
     const profile = await this.profileRepository.findByPassportSlug(slug);
     if (!profile) {
       throw new NotFoundException(`Pasaporte "${slug}" no encontrado`);
     }
 
-    // Verificar permisos Unlock si se proporciona viewerAddress
-    if (viewerAddress) {
+    if (profile.passport_enabled !== true) throw new NotFoundException('Pasaporte no publicado');
+    if (!viewerAddress || !signature || !timestamp) throw new HttpException('Firma de la wallet requerida', HttpStatus.UNAUTHORIZED);
+    {
       const verification = await this.unlockVerifier.verifyKey({
-        viewerAddress,
+        viewerAddress, signature, timestamp,
       });
       if (!verification.hasValidKey) {
         throw new HttpException(
@@ -201,13 +202,10 @@ export class PassportsService {
             installmentNumber: inst.installment_number,
             receiptHash: inst.receipt_hash || matchingOnChain?.receiptHash,
             isDigital: inst.payment_method === 'POLLAR_USDC',
-            mainnetTxHash: inst.pollar_tx_hash || null,
+            stellarTxHash: inst.pollar_tx_hash || null,
             paidDate: inst.paid_date,
-            hskTimestamp:
-              matchingOnChain?.timestamp ||
-              Math.floor(
-                new Date(inst.paid_date || Date.now()).getTime() / 1000,
-              ),
+            hskTimestamp: matchingOnChain?.timestamp ?? null,
+            hskVerified: !!matchingOnChain && matchingOnChain.receiptHash === inst.receipt_hash,
           });
         }
       }
@@ -221,8 +219,8 @@ export class PassportsService {
       totalDisbursedCapital: totalFinanced,
     });
 
-    // Generar documento W3C Verifiable Credential
-    return this.unlockVerifier.generateW3CCredential({
+    // Generar informe con pruebas disponibles, sin firma inventada
+    return this.unlockVerifier.generateAuditReport({
       passportSlug: profile.passport_slug || slug,
       borrowerWallet:
         profile.wallet_address || '0x0000000000000000000000000000000000000000',

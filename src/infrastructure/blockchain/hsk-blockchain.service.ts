@@ -148,11 +148,11 @@ export class HskBlockchainService implements IBlockchainService {
         }));
       } catch (err: any) {
         this.logger.error(
-          `Error reading loan proofs from HSK: ${err.message}. Returning empty list.`,
+          `Error reading loan proofs from HSK: ${err.message}.`,
         );
       }
     }
 
-    return [];
+    throw new ServiceUnavailableException('No se pudieron consultar las pruebas HSK');
   }
 }

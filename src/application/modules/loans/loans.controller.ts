@@ -19,8 +19,7 @@ export class LoansController {
   @UseGuards(SupabaseAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async createLoan(@Req() req: any, @Body() dto: CreateLoanDto) {
-    // Si viene autenticado, usamos el ID del usuario o un id por defecto para demo
-    const lenderId = req.user?.id || '00000000-0000-0000-0000-000000000001';
+    const lenderId = req.user.id;
     return this.loansService.createLoan(lenderId, dto);
   }
 }

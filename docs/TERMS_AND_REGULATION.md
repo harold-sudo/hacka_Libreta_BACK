@@ -96,3 +96,15 @@ constituye un **Reconocimiento Bilateral de Pago y Principio de Prueba por Escri
 * **Propiedad de los Datos:** El prestatario es el propietario exclusivo y soberano de su expediente de cumplimiento.
 * **Monetización y Licencia de Acceso:** Mediante la integración de **Unlock Protocol**, el acceso al dossier de auditoría detallado requiere la posesión de una llave digital (Key NFT / Access Pass). 
 * **Finalidad:** Garantizar que únicamente entidades financieras, auditores autorizados o el propio prestatario puedan consultar el desglose pormenorizado de las pruebas, protegiendo al prestatario contra revisiones no autorizadas de su información comercial.
+
+## Actualización de conexión y eliminación de datos simulados — 2026-09-12
+
+El panel y Cuotas Pollar usan una sesión Auth validada por `/api/auth/me`, caché por usuario y consultas compartidas a `/api/pollar/settlements`. Ya no hay accesos demo, métricas fijas, LRI 98, OTP aleatorio ni direcciones generadas descartando sus claves. El formulario de crédito compatible usa borrowerId, borrowerWalletAddress, capital, installmentAmount, totalInstallments, startDate, currency USDC, frequency WEEKLY y settlementNetwork stellar:testnet.
+
+La clave administrativa del backend debe ser service_role o sb_secret_; una clave anon en SUPABASE_SERVICE_ROLE_KEY provoca un error de configuración explícito. La clave correcta fue verificada con lecturas reales. No se ampliaron permisos públicos para ocultar el error.
+
+Las respuestas de cuotas incluyen hsk_verification (VERIFIED / NOT_FOUND / UNAVAILABLE) y hsk_verified por comprobante, consultados en HSK testnet y almacenados en caché hasta 30 segundos. El crédito BOB existente no aparece en el contrato actual: se conserva como registro sin respaldo HSK verificado. La conciliación Pollar exige un crédito USDC configurado en Stellar testnet.
+
+Unlock exige firma EIP-191 vigente (mensaje `LIBRETA Unlock Audit Access: <timestamp UNIX en segundos>`, máximo 300 segundos), red configurada y membresía on-chain. El dossier requiere x-viewer-address, x-viewer-signature y x-viewer-timestamp; respeta la publicación del pasaporte y devuelve un informe sin firma, no una VC ficticia. LRI sin historial devuelve cero/INSUFFICIENT, no un puntaje favorable inventado. El panel de pasaporte y cobrador offline sigue pendiente; no debe anunciarse como función concluida.
+
+Consulta la guía actual en `hacka_Libreta_FRONT/docs/GUIA_PRUEBAS_FRONTEND_ACTUAL.md`. La prueba de pago completa con dos usuarios todavía requiere ejecución; compilar y leer la base no demuestran por sí solos un pago exitoso.

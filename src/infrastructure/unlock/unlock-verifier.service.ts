@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
 import {
@@ -29,7 +29,9 @@ export class UnlockVerifierService implements IUnlockVerifierService {
 
     try {
       if (this.lockAddress !== ethers.ZeroAddress) {
-        this.provider = new ethers.JsonRpcProvider(rpcUrl);
+        const request = new ethers.FetchRequest(rpcUrl);
+        request.timeout = 8000;
+        this.provider = new ethers.JsonRpcProvider(request);
         this.lockContract = new ethers.Contract(
           this.lockAddress,
           PUBLIC_LOCK_ABI,
@@ -48,7 +50,12 @@ export class UnlockVerifierService implements IUnlockVerifierService {
   }): Promise<UnlockVerificationResult> {
     const { viewerAddress, signature, timestamp } = params;
 
-    // Validación opcional de firma EIP-191 si se envió
+    if (!ethers.isAddress(viewerAddress) || !signature || !timestamp ||
+        !Number.isSafeInteger(timestamp) || timestamp > Math.floor(Date.now()/1000) + 30 ||
+        Math.floor(Date.now()/1000) - timestamp > 300) {
+      return { hasValidKey: false, accessGranted: false };
+    }
+    // La firma prueba control de la wallet y caduca a los cinco minutos.
     if (signature && timestamp) {
       try {
         const message = `LIBRETA Unlock Audit Access: ${timestamp}`;
@@ -68,10 +75,12 @@ export class UnlockVerifierService implements IUnlockVerifierService {
     // Consulta on-chain del contrato PublicLock si está configurado
     if (this.lockContract && this.lockAddress !== ethers.ZeroAddress) {
       try {
+        const expectedChain = Number(this.configService.get<string>('UNLOCK_CHAIN_ID'));
+        if (!Number.isSafeInteger(expectedChain) || expectedChain <= 0 || Number((await this.provider!.getNetwork()).chainId) !== expectedChain) throw new Error('Unlock network mismatch');
         const isValid: boolean =
           await this.lockContract.getHasValidKey(viewerAddress);
         let expiration = 0;
-        let tokenId = '1';
+        let tokenId: string | undefined;
         if (isValid) {
           expiration = Number(
             await this.lockContract.keyExpirationTimestampFor(viewerAddress),
@@ -81,7 +90,7 @@ export class UnlockVerifierService implements IUnlockVerifierService {
               await this.lockContract.tokenOfOwnerByIndex(viewerAddress, 0)
             ).toString();
           } catch {
-            tokenId = '1';
+            tokenId = undefined;
           }
         }
         return {
@@ -95,31 +104,13 @@ export class UnlockVerifierService implements IUnlockVerifierService {
       }
     }
 
-    // En modo desarrollo / demo hackathon, otorgamos acceso si la dirección es válida
-    const isMockAuditor =
-      viewerAddress &&
-      ethers.isAddress(viewerAddress) &&
-      viewerAddress.toLowerCase().startsWith('0x');
-
-    if (isMockAuditor) {
-      return {
-        hasValidKey: true,
-        expirationTimestamp: Math.floor(Date.now() / 1000) + 86400 * 30,
-        tokenId: '42',
-        accessGranted: true,
-      };
-    }
-
-    return {
-      hasValidKey: false,
-      accessGranted: false,
-    };
+    throw new ServiceUnavailableException('Unlock no está configurado o no se pudo verificar la membresía en la red.');
   }
 
   /**
-   * Genera el documento de Credencial Verificable W3C (JSON-LD)
+   * Genera un informe sin firma; no es una credencial W3C verificable.
    */
-  generateW3CCredential(params: {
+  generateAuditReport(params: {
     passportSlug: string;
     borrowerWallet: string;
     lriScore: number;
@@ -127,33 +118,17 @@ export class UnlockVerifierService implements IUnlockVerifierService {
     punctualityRate: number;
     proofs: any[];
   }) {
+    // Informe sin firma: no se presenta un hash de texto como credencial verificable.
     return {
-      '@context': [
-        'https://www.w3.org/2018/credentials/v1',
-        'https://libreta.app/contexts/financial-reputation-v1.jsonld',
-      ],
-      id: `urn:uuid:${ethers.keccak256(ethers.toUtf8Bytes(params.passportSlug + Date.now())).slice(0, 36)}`,
-      type: ['VerifiableCredential', 'LibretaFinancialReputationCredential'],
-      issuer: `did:ethr:hsk:${this.lockAddress !== ethers.ZeroAddress ? this.lockAddress : '0x1234567890123456789012345678901234567890'}`,
-      issuanceDate: new Date().toISOString(),
-      credentialSubject: {
-        id: `did:ethr:hsk:${params.borrowerWallet}`,
-        passportSlug: params.passportSlug,
-        lriScore: params.lriScore,
-        completedLoans: params.completedLoans,
-        onTimePaymentRatio: params.punctualityRate,
-        hskContract: this.lockAddress,
-        proofs: params.proofs,
-      },
-      proof: {
-        type: 'EthereumEip712Signature2021',
-        created: new Date().toISOString(),
-        proofValue: ethers.keccak256(
-          ethers.toUtf8Bytes(
-            `${params.passportSlug}:${params.lriScore}:${Date.now()}`,
-          ),
-        ),
-      },
+      type: 'LibretaAuditReport',
+      signed: false,
+      generatedAt: new Date().toISOString(),
+      passportSlug: params.passportSlug,
+      borrowerWallet: params.borrowerWallet,
+      lriScore: params.lriScore,
+      completedLoans: params.completedLoans,
+      punctualityRate: params.punctualityRate,
+      proofs: params.proofs,
     };
   }
 }

@@ -45,7 +45,8 @@ describe('LriCalculatorService', () => {
       totalDisbursedCapital: 1200,
     });
 
-    expect(result.lriScore).toBeDefined();
+    expect(result.lriScore).toBe(0);
+    expect(result.confidenceGrade).toBe('INSUFFICIENT');
     expect(Number.isFinite(result.lriScore)).toBe(true);
   });
 });

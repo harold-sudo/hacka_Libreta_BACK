@@ -3,6 +3,7 @@ import {
   Post,
   Param,
   Body,
+  Req,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -23,8 +24,9 @@ export class InstallmentsController {
   async generateOtpChallenge(
     @Param('id') installmentId: string,
     @Body() _dto: OtpChallengeDto,
+    @Req() req: any,
   ) {
-    return this.installmentsService.generateOtpChallenge(installmentId);
+    return this.installmentsService.generateOtpChallenge(installmentId, req.user.id);
   }
 
   @Post(':id/collect-cash')
@@ -33,8 +35,9 @@ export class InstallmentsController {
   async collectCash(
     @Param('id') installmentId: string,
     @Body() dto: CollectCashDto,
+    @Req() req: any,
   ) {
-    return this.installmentsService.collectCash(installmentId, dto);
+    return this.installmentsService.collectCash(installmentId, dto, req.user.id);
   }
 
   @Post(':id/pollar-confirm')

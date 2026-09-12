@@ -45,8 +45,8 @@ export class LoansService {
     if (dto.capital>dto.installmentAmount*dto.totalInstallments) throw new BadRequestException('Las cuotas no cubren el capital');
 
     const lender = await this.profileRepository.findById(lenderId);
-    const lenderWallet =
-      lender?.wallet_address || '0x0000000000000000000000000000000000000001';
+    if (!lender?.wallet_address) throw new BadRequestException('El prestamista no tiene una wallet HSK registrada');
+    const lenderWallet = lender.wallet_address;
 
     // 2. Generar UUID y hashes criptográficos para Zero PII On-Chain
     const now = Date.now();

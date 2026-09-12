@@ -10,7 +10,7 @@ export class LenderRoutesController {
   @Post('routes/assign')
   @UseGuards(SupabaseAuthGuard)
   async assignRoute(@Req() req: any, @Body() dto: AssignRouteDto) {
-    const lenderId = req.user?.id || '00000000-0000-0000-0000-000000000001';
+    const lenderId = req.user.id;
     return this.routesService.assignRoute(lenderId, dto);
   }
 }

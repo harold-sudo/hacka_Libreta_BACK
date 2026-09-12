@@ -93,4 +93,25 @@ describe('HSK settlement recovery', () => {
     await expect(service.anchor(intent)).rejects.toThrow('cambió');
     expect(registry.confirmPayment).not.toHaveBeenCalled();
   });
+  it('does not certify a loan absent from HSK', async () => {
+    const {service, registry} = fixture();
+    registry.loans.mockResolvedValue({createdAt: 0n, lender:'operator', paidInstallments:0n, status:0n});
+    expect((await service.evidence(intent.hsk_loan_id)).status).toBe('NOT_FOUND');
+    expect(registry.confirmPayment).not.toHaveBeenCalled();
+  });
+  it('distinguishes unavailable RPC from missing on-chain data', async () => {
+    const {service, registry} = fixture();
+    registry.loans.mockRejectedValue(new Error('RPC unavailable'));
+    expect((await service.evidence(intent.hsk_loan_id)).status).toBe('UNAVAILABLE');
+  });
+  it('returns actual receipt hashes and caches a read without signing', async () => {
+    const {service, registry} = fixture();
+    registry.getLoanProofs.mockResolvedValue([proof]);
+    const result = await service.evidence(intent.hsk_loan_id);
+    expect(result).toEqual({status:'VERIFIED',receipts:[{number:1,hash:intent.receipt_hash}]});
+    await service.evidence(intent.hsk_loan_id);
+    expect(registry.loans).toHaveBeenCalledTimes(1);
+    expect(registry.confirmPayment).not.toHaveBeenCalled();
+  });
+
 });

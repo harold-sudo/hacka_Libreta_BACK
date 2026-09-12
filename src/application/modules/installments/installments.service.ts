@@ -1,5 +1,7 @@
+import type { IProfileRepository } from '../../../core/interfaces/profile-repository.interface';
 import {
   Injectable,
+  ForbiddenException,
   Inject,
   NotFoundException,
   BadRequestException,
@@ -33,9 +35,10 @@ export class InstallmentsService {
     @Inject('IBlockchainService')
     private readonly blockchainService: IBlockchainService,
     private readonly cryptoEngine: CryptoEngineService,
+    @Inject('IProfileRepository') private readonly profiles: IProfileRepository,
   ) {}
 
-  async generateOtpChallenge(installmentId: string) {
+  async generateOtpChallenge(installmentId: string, userId: string) {
     const installment =
       await this.installmentRepository.findById(installmentId);
     if (!installment) {
@@ -46,11 +49,14 @@ export class InstallmentsService {
       throw new BadRequestException('Esta cuota ya ha sido pagada previamente');
     }
 
+    const profile = await this.profiles.findByAuthUserId(userId);
+    const loan = await this.loanRepository.findById(installment.loan_id);
+    if (!profile || profile.role !== 'BORROWER' || loan?.borrower_id !== profile.id) throw new ForbiddenException('Esta cuota no pertenece al prestatario');
     const challenge = this.cryptoEngine.generateOtp(300);
     this.otpChallenges.set(installmentId, challenge);
 
     this.logger.log(
-      `Desafío OTP generado para cuota ${installmentId}: ${challenge.otpCode} (Expira: ${challenge.expiresAt.toISOString()})`,
+      `Desafío OTP generado para cuota ${installmentId}`,
     );
 
     return {
@@ -60,7 +66,7 @@ export class InstallmentsService {
     };
   }
 
-  async collectCash(installmentId: string, dto: CollectCashDto) {
+  async collectCash(installmentId: string, dto: CollectCashDto, userId: string) {
     const installment =
       await this.installmentRepository.findById(installmentId);
     if (!installment) {
@@ -71,8 +77,13 @@ export class InstallmentsService {
       throw new BadRequestException('Esta cuota ya fue pagada');
     }
 
-    // Validar desafío OTP si existe en caché
+    const actor = await this.profiles.findByAuthUserId(userId);
+    const assignedLoan = await this.loanRepository.findById(installment.loan_id);
+    if (!actor || actor.role !== 'LENDER' || assignedLoan?.lender_id !== actor.id) throw new ForbiddenException('Solo el prestamista titular puede confirmar este cobro presencial');
+    if (Math.round(Number(installment.amount)*100) !== Math.round(dto.amount*100)) throw new BadRequestException('El importe no coincide con la cuota');
+    // El desafío debe existir y haber sido emitido al prestatario.
     const cachedChallenge = this.otpChallenges.get(installmentId);
+    if (!cachedChallenge) throw new BadRequestException('Solicita un OTP válido al prestatario antes de cobrar');
     if (cachedChallenge) {
       const isValid = this.cryptoEngine.verifyOtp(
         dto.borrowerOtp,

@@ -9,7 +9,7 @@ export class CollectorController {
   @Get('routes/today')
   @UseGuards(SupabaseAuthGuard)
   async getTodayRoute(@Req() req: any) {
-    const collectorId = req.user?.id || '00000000-0000-0000-0000-000000000003';
+    const collectorId = req.user.id;
     return this.routesService.getTodayRoute(collectorId);
   }
 }

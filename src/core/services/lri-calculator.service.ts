@@ -38,7 +38,7 @@ export class LriCalculatorService {
             1.0,
             Math.max(0.0, onTimePaidInstallments / totalPaidInstallments),
           )
-        : 1.0; // Estado inicial neutral si está al día en cuota 0
+        : 0.0; // Sin pagos no existe historial de puntualidad
 
     // 2. Completitud de créditos históricos (máximo 3 créditos = 1.0)
     const completitudRate = Math.min(
@@ -53,7 +53,7 @@ export class LriCalculatorService {
             1.0,
             Math.max(0.0, totalRepaidCapital / totalDisbursedCapital),
           )
-        : 1.0;
+        : 0.0;
 
     // Ponderación oficial
     const rawScore =

@@ -30,7 +30,9 @@ export class PassportsController {
   async getAuditDossier(
     @Param('slug') slug: string,
     @Headers('x-viewer-address') viewerAddress: string,
+    @Headers('x-viewer-signature') signature: string,
+    @Headers('x-viewer-timestamp') timestamp: string,
   ) {
-    return this.passportsService.getAuditDossier(slug, viewerAddress);
+    return this.passportsService.getAuditDossier(slug, viewerAddress, signature, Number(timestamp));
   }
 }

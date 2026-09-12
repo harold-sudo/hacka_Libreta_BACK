@@ -67,11 +67,11 @@ export class LenderService {
     const cashPercentage =
       totalPaidCount > 0
         ? Math.round((cashCount / totalPaidCount) * 1000) / 10
-        : 70.0;
+        : 0.0;
     const pollarUsdcPercentage =
       totalPaidCount > 0
         ? Math.round((pollarCount / totalPaidCount) * 1000) / 10
-        : 30.0;
+        : 0.0;
 
     const overdueRate =
       totalDueInstallments > 0

@@ -10,6 +10,7 @@ import {
   IsDateString,
   Matches,
   IsOptional,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateLoanDto {
@@ -32,15 +33,26 @@ export class CreateLoanDto {
   @Max(52)
   totalInstallments: number;
 
+  @ValidateIf(
+    (dto: CreateLoanDto) =>
+      dto.interestRate == null || dto.installmentAmount !== undefined,
+  )
   @IsNumber({ maxDecimalPlaces: 2 })
   @Max(999999999.99)
   @IsPositive()
-  installmentAmount: number;
+  installmentAmount?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(1000)
+  interestRate?: number;
 
   @IsIn(['DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY'])
   frequency: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
 
-  @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  @IsDateString({ strict: true })
   startDate: string;
 
   @IsString()

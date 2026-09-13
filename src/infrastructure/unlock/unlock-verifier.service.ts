@@ -14,6 +14,7 @@ import {
 
 const PUBLIC_LOCK_ABI = [
   'function getHasValidKey(address _recipient) external view returns (bool)',
+  'function keyExpirationTimestampFor(uint256 _tokenId) external view returns (uint256)',
   'function keyExpirationTimestampFor(address _recipient) external view returns (uint256)',
   'function tokenOfOwnerByIndex(address _owner, uint256 _index) external view returns (uint256)',
 ];
@@ -139,15 +140,34 @@ export class UnlockVerifierService implements IUnlockVerifierService {
         let expiration = 0;
         let tokenId: string | undefined;
         if (isValid) {
-          expiration = Number(
-            await this.lockContract.keyExpirationTimestampFor(viewerAddress),
-          );
           try {
             tokenId = (
               await this.lockContract.tokenOfOwnerByIndex(viewerAddress, 0)
             ).toString();
           } catch {
             tokenId = undefined;
+          }
+
+          try {
+            if (tokenId !== undefined) {
+              const fn =
+                this.lockContract['keyExpirationTimestampFor(uint256)'] ||
+                this.lockContract.keyExpirationTimestampFor;
+              expiration = Number(
+                await fn.call(this.lockContract, BigInt(tokenId)),
+              );
+            }
+          } catch {
+            try {
+              const fn =
+                this.lockContract['keyExpirationTimestampFor(address)'] ||
+                this.lockContract.keyExpirationTimestampFor;
+              expiration = Number(
+                await fn.call(this.lockContract, viewerAddress),
+              );
+            } catch {
+              expiration = 0;
+            }
           }
         }
         const result: UnlockVerificationResult = {

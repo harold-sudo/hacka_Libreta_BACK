@@ -14,6 +14,7 @@ import type { IBlockchainService } from '../../../core/interfaces/blockchain-ser
 import type { Installment } from '../../../core/domain/installment.entity';
 import { CryptoEngineService } from '../../../core/services/crypto-engine.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
+import { calculateLoan, installmentDate } from './loan-calculation';
 import { CreateLoanDto } from './dto/create-loan.dto';
 
 @Injectable()
@@ -34,6 +35,30 @@ export class LoansService {
   ) {}
 
   async createLoan(lenderId: string, dto: CreateLoanDto) {
+    // Validate and compute the entire schedule before writing to HSK or Supabase.
+    let schedule: { amount: number; principal: number; dueDate: string }[];
+    try {
+      const calculated = calculateLoan(
+        dto.capital,
+        dto.interestRate ?? 0,
+        dto.totalInstallments,
+      );
+      if (
+        dto.interestRate == null &&
+        (!dto.installmentAmount ||
+          Math.round(dto.installmentAmount * 100) * dto.totalInstallments <
+            Math.round(dto.capital * 100))
+      ) {
+        throw new Error('Las cuotas no cubren el capital');
+      }
+      schedule = calculated.amounts.map((amount, i) => ({
+        amount: dto.interestRate == null ? dto.installmentAmount! : amount,
+        principal: calculated.principals[i],
+        dueDate: installmentDate(dto.startDate, dto.frequency, i),
+      }));
+    } catch (error) {
+      throw new BadRequestException((error as Error).message);
+    }
     const lenderProfile =
       await this.profileRepository.findByAuthUserId(lenderId);
     if (!lenderProfile || lenderProfile.role !== 'LENDER')
@@ -69,8 +94,6 @@ export class LoansService {
       throw new BadRequestException(
         'El prestatario y su wallet HSK deben coincidir con el perfil registrado',
       );
-    if (dto.capital > dto.installmentAmount * dto.totalInstallments)
-      throw new BadRequestException('Las cuotas no cubren el capital');
 
     const lender = await this.profileRepository.findById(lenderId);
     if (!lender?.wallet_address)
@@ -108,7 +131,8 @@ export class LoansService {
       currency: dto.currency,
       settlement_network: dto.settlementNetwork ?? null,
       total_installments: dto.totalInstallments,
-      installment_amount: dto.installmentAmount,
+      installment_amount: schedule[0].amount,
+      interest_rate: dto.interestRate ?? null,
       frequency: dto.frequency,
       status: 'ACTIVE',
     });
@@ -131,31 +155,17 @@ export class LoansService {
     });
 
     // 5. Generar el cronograma de cuotas (Installments)
-    const startDate = new Date(dto.startDate);
-    const installmentsToCreate: Partial<Installment>[] = [];
-
-    for (let i = 1; i <= dto.totalInstallments; i++) {
-      const dueDate = new Date(startDate);
-      if (dto.frequency === 'DAILY') {
-        dueDate.setDate(dueDate.getDate() + (i - 1));
-      } else if (dto.frequency === 'WEEKLY') {
-        dueDate.setDate(dueDate.getDate() + (i - 1) * 7);
-      } else if (dto.frequency === 'BIWEEKLY') {
-        dueDate.setDate(dueDate.getDate() + (i - 1) * 14);
-      } else if (dto.frequency === 'MONTHLY') {
-        dueDate.setMonth(dueDate.getMonth() + (i - 1));
-      }
-
-      installmentsToCreate.push({
+    const installmentsToCreate: Partial<Installment>[] = schedule.map(
+      (row, index) => ({
         loan_id: createdLoan.id,
-        installment_number: i,
-        amount: dto.installmentAmount,
-        principal_amount: dto.capital / dto.totalInstallments,
-        due_date: dueDate.toISOString().split('T')[0],
-        status: 'PENDING' as const,
-        hsk_sync_status: 'PENDING' as const,
-      });
-    }
+        installment_number: index + 1,
+        amount: row.amount,
+        principal_amount: row.principal,
+        due_date: row.dueDate,
+        status: 'PENDING',
+        hsk_sync_status: 'PENDING',
+      }),
+    );
 
     await this.installmentRepository.createInstallments(installmentsToCreate);
 

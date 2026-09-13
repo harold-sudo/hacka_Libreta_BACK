@@ -13,6 +13,7 @@ export interface Loan {
   settlement_network?: 'stellar:testnet' | null;
   total_installments: number;
   installment_amount: number;
+  interest_rate?: number | null;
   frequency: LoanFrequency;
   status: LoanStatus;
   created_at: string;

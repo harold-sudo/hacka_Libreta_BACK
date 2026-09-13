@@ -3,9 +3,13 @@
 Desde `hacka_Libreta_BACK`, con Node 22 y dependencias instaladas:
 
 ```powershell
-node scripts/hsk.mjs compile
-node scripts/hsk.mjs check testnet
-node scripts/hsk.mjs deploy testnet
+npm run hsk:compile
+npm run hsk:check:testnet
+npm run hsk:deploy:testnet
+
+# Para Mainnet (Chain ID 177):
+npm run hsk:check:mainnet
+npm run hsk:deploy:mainnet
 ```
 
 `compile` no usa claves ni red. Produce ABI, bytecode y entrada Standard JSON

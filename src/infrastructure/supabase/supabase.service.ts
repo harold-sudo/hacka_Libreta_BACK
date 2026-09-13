@@ -51,22 +51,40 @@ export class SupabaseService {
   }
 }
 
-export function assertServerKey(key: string, anonKey: string): void {
+export function assertServerKey(rawKey: string, anonKey: string): void {
+  // Tolerancia a copy-paste: espacios/saltos de línea/commillas alrededor.
+  const key = (rawKey ?? '')
+    .trim()
+    .replace(/^(["'])/, '')
+    .replace(/(["'])$/, '');
   let role: string | undefined;
   try {
-    role = JSON.parse(
-      Buffer.from(key.split('.')[1], 'base64url').toString(),
-    ).role;
+    const parts = key.split('.');
+    role =
+      parts.length === 3
+        ? JSON.parse(Buffer.from(parts[1], 'base64url').toString()).role
+        : undefined;
   } catch {
-    /* Modern keys are not JWTs. */
+    /* Las llaves nuevas no son JWT (sb_secret_...) ni sb_publishable_... */
   }
-  if (
-    !key ||
-    key === anonKey ||
-    (!key.startsWith('sb_secret_') && role !== 'service_role')
-  ) {
-    throw new Error(
-      'SUPABASE_SERVICE_ROLE_KEY debe contener una clave secreta de servidor (service_role o sb_secret_), no la clave pública anon. Corrige el .env del backend.',
-    );
+
+  const isNewSecretKey = key.startsWith('sb_secret_');
+  const isLegacyServiceRole = role === 'service_role';
+  const isLowPrivilege = role === 'anon' || key.startsWith('sb_publishable_');
+
+  if (key && key !== anonKey && (isNewSecretKey || isLegacyServiceRole)) {
+    return;
   }
+
+  const reason = !key
+    ? 'la variable está vacía'
+    : key === anonKey
+      ? 'es la MÍSMA clave pública (anon) de SUPABASE_ANON_KEY'
+      : isLowPrivilege
+        ? 'es una clave de cliente (anon legacy o sb_publishable_), NO de servidor'
+        : 'no es un JWT legacy service_role (eyJ...) ni una sb_secret_... nueva. Copia la llave exacta desde Project Settings > API Keys';
+
+  throw new Error(
+    `SUPABASE_SERVICE_ROLE_KEY debe contener una clave secreta de servidor (service_role o sb_secret_), no la clave pública anon. Causa detectada: ${reason}.`,
+  );
 }

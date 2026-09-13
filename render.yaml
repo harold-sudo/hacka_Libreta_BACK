@@ -1,0 +1,70 @@
+# ============================================================
+# CREDITCHAIN — Backend NestJS · Despliegue en Render
+# ------------------------------------------------------------
+# Blueprint (deploy desde GitHub):
+#   1) Sube este repo a GitHub (remote ya configurado:
+#      https://github.com/harold-sudo/hacka_Libreta_BACK).
+#   2) En Render:  New > Blueprint  y conecta este repositorio.
+#   3) Render lee este render.yaml y crea el Web Service
+#      con el plan `free` y todas las variables de entorno.
+#   4) En el dashboard, rellena los valores `sync: false`
+#      (supersecretos: Supabase, HSK operator, AES …) y despliega.
+#   5) Para re-deploys automáticos: marca "Auto-Deploy" (default).
+# Public URL actual del servicio: https://hacka-libreta-back.onrender.com
+# ============================================================
+
+services:
+  - type: web
+    name: hacka-libreta-back
+    runtime: node
+    plan: free
+    repo: https://github.com/harold-sudo/hacka_Libreta_BACK.git
+    branch: main
+    healthCheckPath: /health
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:prod
+    autoDeploy: true
+    envVars:
+      # --- Server ---
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      # --- Supabase (Postgres cloud — la "Polla" del proyecto) ---
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # --- EVM HashKey Chain (Track HSK Chain) ---
+      - key: HSK_RPC_URL
+        value: https://testnet.hsk.xyz
+      - key: HSK_CHAIN_ID
+        value: "133"
+      - key: HSK_OPERATOR_PRIVATE_KEY
+        sync: false
+      - key: LIBRETA_REGISTRY_ADDRESS
+        value: "0x785f249c2B25F3306b53F9D2432313e8FC9239Ce"
+      # --- Pollar / Stellar USDC (Track Pollar) ---
+      - key: POLLAR_TESTNET_USDC_ISSUER
+        sync: false
+      - key: POLLAR_WEBHOOK_SECRET
+        sync: false
+      # --- Unlock Protocol (verificación server-side del AuditoriX) ---
+      - key: UNLOCK_LOCK_ADDRESS
+        sync: false
+      - key: UNLOCK_NETWORK_RPC
+        value: https://mainnet.base.org
+      - key: UNLOCK_CACHE_TTL_MS
+        value: "30000"
+      # --- Envelope Encryption (zero-PII off-chain) ---
+      - key: AES_SECRET_KEY
+        sync: false
+      # --- Audit trail on-chain (listener + reporte) ---
+      - key: AUDIT_LISTENER_ENABLED
+        value: "false"
+      - key: AUDIT_BACKFILL_BLOCKS
+        value: "1000"
+      - key: AUDIT_API_KEY
+        sync: false

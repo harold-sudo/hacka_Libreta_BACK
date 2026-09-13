@@ -1,0 +1,17 @@
+node_modules
+dist
+coverage
+.git
+.gitignore
+.env
+.env.example
+deployments
+docs
+scripts
+test
+contracts
+supabase
+npm-debug.log*
+Dockerfile
+render.yaml
+README.md

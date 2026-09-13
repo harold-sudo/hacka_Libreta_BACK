@@ -8,9 +8,9 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
-  // Habilitar CORS para integración con la PWA
+  // Habilitar CORS para integración con la PWA (Netlify producción + dev local)
   app.enableCors({
-    origin: true,
+    origin: ['https://creditchat.netlify.app', 'http://localhost:5173'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });

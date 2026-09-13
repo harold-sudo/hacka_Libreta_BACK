@@ -1,4 +1,5 @@
 jest.mock('@nestjs/config', () => ({ ConfigService: class {} }));
+import { CryptoEngineService } from '../../../core/services/crypto-engine.service';
 import { LoansService } from './loans.service';
 import { CreateLoanDto } from './dto/create-loan.dto';
 
@@ -76,6 +77,34 @@ describe('LoansService percentage registration', () => {
       '2026-02-28',
       '2026-03-31',
     ]);
+  });
+  it('creates independent loans and installments for the same lender and borrower', async () => {
+    const { service, createLoan, createInstallments, registerLoan } = setup();
+    // Use real ID generation and return a different database ID for each insertion.
+    const engine = new CryptoEngineService();
+    (service as unknown as { cryptoEngine: CryptoEngineService }).cryptoEngine =
+      engine;
+    createLoan.mockImplementation(
+      (row: { hsk_loan_id: string; loan_hash: string }) =>
+        Promise.resolve({ ...row, id: `loan-${createLoan.mock.calls.length}` }),
+    );
+    await service.createLoan('auth-user', input);
+    await service.createLoan('auth-user', {
+      ...input,
+      capital: 200,
+      totalInstallments: 2,
+    });
+    expect(createLoan).toHaveBeenCalledTimes(2);
+    const first = registerLoan.mock.calls[0][0] as { loanId: string };
+    const second = registerLoan.mock.calls[1][0] as { loanId: string };
+    expect(first.loanId).not.toBe(second.loanId);
+    const batches = createInstallments.mock.calls.map(
+      (call) => call[0] as { loan_id: string }[],
+    );
+    expect(batches[0]).toHaveLength(7);
+    expect(batches[1]).toHaveLength(2);
+    expect(batches[0].every((row) => row.loan_id === 'loan-1')).toBe(true);
+    expect(batches[1].every((row) => row.loan_id === 'loan-2')).toBe(true);
   });
   it('rejects an impossible schedule before broadcasting or saving', async () => {
     const { service, registerLoan, createLoan } = setup();

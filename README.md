@@ -20,6 +20,24 @@ Stack: **NestJS 11**, **ethers.js 6**, **@supabase/supabase-js 2**, class-valida
 
 ## 1. Arquitectura
 
+### Configuración de Supabase en Render
+
+El backend requiere las tres variables en **Environment** del servicio:
+
+- `SUPABASE_URL`: URL del proyecto Supabase.
+- `SUPABASE_ANON_KEY`: clave pública `anon` o `sb_publishable_...`.
+- `SUPABASE_SERVICE_ROLE_KEY`: clave privada `service_role` o `sb_secret_...`, exclusiva del backend.
+
+Los nombres coinciden con `.env.example` y `render.yaml`. Tener solamente la clave
+de servidor no basta: también se inicializa un cliente público. El arranque rechaza
+variables ausentes o vacías indicando su nombre, sin imprimir las claves. No hay
+una URL de proyecto por defecto.
+
+Después de corregir los valores en Render, selecciona **Save, rebuild, and deploy**
+o **Save and deploy** si solamente cambiaste variables. Un `.env` local
+no configura el servicio remoto. No hace falta borrar la caché para aplicar variables.
+Consulta la [guía de Render](https://render.com/docs/configure-environment-variables).
+
 ```text
 ┌───────────────────────────────┐
 │  PWA (React + ethers)         │  MetaMask / BrowserProvider

@@ -7,15 +7,25 @@ export class SupabaseService {
   private readonly logger = new Logger(SupabaseService.name);
   private client: SupabaseClient;
   private serviceClient: SupabaseClient;
+  private readonly supabaseUrl: string;
+  private readonly anonKey: string;
 
   constructor(private readonly configService: ConfigService) {
-    const supabaseUrl =
-      this.configService.get<string>('SUPABASE_URL') ||
-      'https://znajylvosomdzibikqym.supabase.co';
-    const anonKey = this.configService.get<string>('SUPABASE_ANON_KEY') || '';
-    const serviceRoleKey =
-      this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const required = (name: string): string => {
+      const value = normalizeConfigValue(this.configService.get<string>(name));
+      if (!value) {
+        throw new Error(
+          `Falta la variable de entorno ${name} o está vacía. Configúrala en Environment del servicio backend de Render (o en .env local) y vuelve a desplegar.`,
+        );
+      }
+      return value;
+    };
+    const supabaseUrl = required('SUPABASE_URL');
+    const anonKey = required('SUPABASE_ANON_KEY');
+    const serviceRoleKey = required('SUPABASE_SERVICE_ROLE_KEY');
     assertServerKey(serviceRoleKey, anonKey);
+    this.supabaseUrl = supabaseUrl;
+    this.anonKey = anonKey;
 
     this.client = createClient(supabaseUrl, anonKey, {
       auth: { persistSession: false },
@@ -29,17 +39,13 @@ export class SupabaseService {
   }
 
   createAuthClient(): SupabaseClient {
-    return createClient(
-      this.configService.getOrThrow<string>('SUPABASE_URL'),
-      this.configService.getOrThrow<string>('SUPABASE_ANON_KEY'),
-      {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-          detectSessionInUrl: false,
-        },
+    return createClient(this.supabaseUrl, this.anonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
       },
-    );
+    });
   }
 
   getClient(): SupabaseClient {
@@ -51,12 +57,15 @@ export class SupabaseService {
   }
 }
 
-export function assertServerKey(rawKey: string, anonKey: string): void {
-  // Tolerancia a copy-paste: espacios/saltos de línea/commillas alrededor.
-  const key = (rawKey ?? '')
+function normalizeConfigValue(value: string | undefined): string {
+  return (value ?? '')
     .trim()
-    .replace(/^(["'])/, '')
-    .replace(/(["'])$/, '');
+    .replace(/^(["'])(.*)\1$/s, '$2')
+    .trim();
+}
+
+export function assertServerKey(rawKey: string, anonKey: string): void {
+  const key = normalizeConfigValue(rawKey);
   let role: string | undefined;
   try {
     const parts = key.split('.');
